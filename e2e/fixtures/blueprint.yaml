@@ -1,0 +1,10 @@
+version: "1"
+
+stack:
+  name: ${{ inputs.environment }} in ${{ inputs.region }}
+  description: A simple hello world stack
+  labels:
+    - ${{ inputs.environment.contains("prod") ? "bacon" : "cabbage" }}
+    - ${{ inputs.region + 'a' }}
+    - ${{ context.now }}
+    - ${{ 17 }}
