@@ -8,6 +8,24 @@ import (
 	"github.com/spacelift-io/celplate/source"
 )
 
+type Scanner struct {
+	currentExpression      *bytes.Buffer
+	currentExpressionStart source.Location
+	output                 *bytes.Buffer
+
+	state    scannerState
+	location *source.Location
+
+	evaluator Evaluator
+}
+
+// Evaluator evaluates expressions nested inside supported blocks (${{ ... }}).
+type Evaluator interface {
+	// Evaluate evaluates the given expression and returns its result, and an
+	// error, if any.
+	Evaluate(expression string) (string, error)
+}
+
 type scannerState int
 
 const (
@@ -22,39 +40,28 @@ const (
 	ssCloseChar
 )
 
-type Scanner struct {
-	currentExpression      *bytes.Buffer
-	currentExpressionStart source.Location
-	output                 *bytes.Buffer
-
-	state    scannerState
-	location *source.Location
-
-	Evaluator Evaluator
-}
-
 func NewScanner(evaluator Evaluator) *Scanner {
 	return &Scanner{
 		currentExpression: bytes.NewBuffer(nil),
 		output:            bytes.NewBuffer(nil),
 		state:             ssDefault,
-		Evaluator:         evaluator,
+		evaluator:         evaluator,
 		location:          source.Start(),
 	}
 }
 
-func (s *Scanner) Transform(input []byte) (output []byte, err error) {
+func (s *Scanner) Transform(input []byte) ([]byte, error) {
 	for _, char := range string(input) {
-		if err = s.consumeWithError(char); err != nil {
-			return
+		if err := s.consumeWithError(char); err != nil {
+			return nil, err
 		}
 	}
 
 	if s.state != ssDefault {
-		return nil, source.Errors{{
+		return nil, &source.Error{
 			Location: *s.location,
 			Message:  "unexpected end of input",
-		}}
+		}
 	}
 
 	return s.output.Bytes(), nil
@@ -99,7 +106,7 @@ func (s *Scanner) consume(char rune) error {
 		return s.onWaitClose(char)
 	}
 
-	return nil
+	return fmt.Errorf("impossible to handle state %q", s.state)
 }
 
 func (s *Scanner) onDefault(char rune) (err error) {
@@ -120,7 +127,7 @@ func (s *Scanner) onDollar(char rune) (err error) {
 	}
 
 	s.state = ssDefault
-	_, err = s.output.WriteRune(dollarChar)
+	_, err = s.output.Write([]byte{dollarChar, byte(char)})
 
 	return
 }
@@ -132,7 +139,7 @@ func (s *Scanner) onWaitOpen(char rune) (err error) {
 	}
 
 	s.state = ssDefault
-	_, err = s.output.Write([]byte{dollarChar, openChar})
+	_, err = s.output.Write([]byte{dollarChar, openChar, byte(char)})
 
 	return
 }
@@ -154,7 +161,7 @@ func (s *Scanner) onWaitClose(char rune) (err error) {
 	}
 
 	var out string
-	if out, err = s.Evaluator.Evaluate(s.currentExpression.String()); err != nil {
+	if out, err = s.evaluator.Evaluate(s.currentExpression.String()); err != nil {
 		return err
 	}
 

@@ -38,6 +38,7 @@ func NewCEL(data map[string]map[string]any) (*CEL, error) {
 
 // Evaluate evaluates the given expression using Google CEL, and returns its
 // result, plus an error, if any.
+// It expects that the final value type is a string returning an error otherwise.
 func (e *CEL) Evaluate(expression string) (string, error) {
 	ast, iss := e.env.Compile(expression)
 
@@ -65,6 +66,10 @@ func (e *CEL) Evaluate(expression string) (string, error) {
 	out, _, err := program.Eval(e.vars)
 	if err != nil {
 		return "", fmt.Errorf("failed to evaluate expression: %w", err)
+	}
+
+	if typ := out.Type().TypeName(); typ != "string" {
+		return "", fmt.Errorf("expected \"%v\" to be of type string but it's %s", out.Value(), typ)
 	}
 
 	return fmt.Sprintf("%v", out.Value()), nil

@@ -1,0 +1,18 @@
+version: "1"
+
+stack:
+  id: ${{ string(inputs.id) }}
+  name: ${{ inputs.environment }} in ${{ inputs.region }}
+  description: A simple hello world stack
+  created_at: ${{ string(context.datetime) }}
+  delete_at: ${{ 'context.datetime' }}
+  labels:
+    - ${{ inputs.environment.contains("prod") ? "bacon" : "cabbage" }}
+    - ${{ inputs.region + 'a' }}
+    - "${{ inputs.region + 'b' }}"
+    - $ inputs.region }}
+    - ${ inputs.region }}
+    - '${ inputs.region }}'
+    - ${{ '17' }}
+    - ${{ "17" }}
+    - ${{ string(17) }}

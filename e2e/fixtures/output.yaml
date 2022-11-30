@@ -1,0 +1,18 @@
+version: "1"
+
+stack:
+  id: 1
+  name: production in us-east-1
+  description: A simple hello world stack
+  created_at: 2022-04-10T01:01:01.000000001Z
+  delete_at: context.datetime
+  labels:
+    - bacon
+    - us-east-1a
+    - "us-east-1b"
+    - $ inputs.region }}
+    - ${ inputs.region }}
+    - '${ inputs.region }}'
+    - 17
+    - 17
+    - 17
