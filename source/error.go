@@ -1,6 +1,8 @@
 package source
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Error represents an error in the source code at a given location.
 type Error struct {

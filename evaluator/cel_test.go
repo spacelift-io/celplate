@@ -25,8 +25,21 @@ func TestCEL(t *testing.T) {
 		g.Describe("NewCEL", func() {
 			g.Describe("with a valid environment", func() {
 				environment = map[string]map[string]any{
-					"input":   {"foo": "bar"},
-					"context": {"time": time.Unix(1666960429, 0), "pi": 3.14},
+					"input": {
+						"foo": "bar",
+					},
+					"context": {
+						"time":     time.Unix(1666960429, 0),
+						"pi":       3.14,
+						"unsigned": uint(1),
+						"signed":   2,
+						"boolean":  true,
+					},
+					"invalid": {
+						"map":   map[int]int{1: 2},
+						"slice": []int{1, 2},
+						"func":  func() {},
+					},
 				}
 			})
 
@@ -41,7 +54,7 @@ func TestCEL(t *testing.T) {
 
 			g.JustBeforeEach(func() { result, err = sut.Evaluate(expression) })
 
-			g.Describe("with a valid expression", func() {
+			g.Describe("with all expression values converted to string", func() {
 				g.BeforeEach(func() {
 					expression = `input.foo + "|" + string(context.time.getSeconds()) + "|" + string(context.pi)`
 				})
@@ -52,11 +65,94 @@ func TestCEL(t *testing.T) {
 				})
 			})
 
+			g.Describe("with non string input values being converted to appropriate strings", func() {
+				g.Describe("double", func() {
+					g.BeforeEach(func() {
+						expression = `context.pi`
+					})
+
+					g.It("should return the result of the expression", func() {
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).To(Equal("3.14"))
+					})
+				})
+				g.Describe("int", func() {
+					g.BeforeEach(func() {
+						expression = `context.signed`
+					})
+
+					g.It("should return the result of the expression", func() {
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).To(Equal("2"))
+					})
+				})
+				g.Describe("uint", func() {
+					g.BeforeEach(func() {
+						expression = `context.unsigned`
+					})
+
+					g.It("should return the result of the expression", func() {
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).To(Equal("1"))
+					})
+				})
+				g.Describe("boolean", func() {
+					g.BeforeEach(func() {
+						expression = `context.boolean`
+					})
+
+					g.It("should return the result of the expression", func() {
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).To(Equal("true"))
+					})
+				})
+				g.Describe("boolean", func() {
+					g.BeforeEach(func() {
+						expression = `context.boolean`
+					})
+
+					g.It("should return the result of the expression", func() {
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).To(Equal("true"))
+					})
+				})
+				g.Describe("slice", func() {
+					g.BeforeEach(func() {
+						expression = `invalid.slice`
+					})
+
+					g.It("should fail as it cannot be a string", func() {
+						Expect(err).To(HaveOccurred())
+						Expect(result).To(Equal(""))
+					})
+				})
+				g.Describe("map", func() {
+					g.BeforeEach(func() {
+						expression = `invalid.map`
+					})
+
+					g.It("should fail as it cannot be a string", func() {
+						Expect(err).To(HaveOccurred())
+						Expect(result).To(Equal(""))
+					})
+				})
+				g.Describe("function", func() {
+					g.BeforeEach(func() {
+						expression = `invalid.func`
+					})
+
+					g.It("should fail as it cannot be a string", func() {
+						Expect(err).To(HaveOccurred())
+						Expect(result).To(Equal(""))
+					})
+				})
+			})
+
 			g.Describe("with an invalid expression type", func() {
 				g.BeforeEach(func() { expression = `context.time` })
 
 				g.It("should return an output type error", func() {
-					Expect(err).To(MatchError("expected \"2022-10-28 15:33:49 +0300 EEST\" to be of type string but it's google.protobuf.Timestamp"))
+					Expect(err).To(MatchError("failed to cast value \"2022-10-28 15:33:49 +0300 EEST\" of type google.protobuf.Timestamp to a string"))
 					Expect(result).To(BeEmpty())
 				})
 			})

@@ -2,7 +2,6 @@ package celplate
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 
 	"github.com/spacelift-io/celplate/source"
@@ -50,20 +49,27 @@ func NewScanner(evaluator Evaluator) *Scanner {
 	}
 }
 
+// Transform will transform a given byte slice by using the evaluator.
+// If it encounters any errors related to the provided input it
+// will return a `source.Error`.
 func (s *Scanner) Transform(input []byte) ([]byte, error) {
+	errs := &source.Errors{}
 	for _, char := range string(input) {
 		if err := s.consumeWithError(char); err != nil {
-			return nil, err
+			errs.Push(err)
 		}
 	}
 
 	if s.state != ssDefault {
-		return nil, &source.Error{
+		errs.Push(&source.Error{
 			Location: *s.location,
 			Message:  "unexpected end of input",
-		}
+		})
 	}
 
+	if err := errs.ErrorOrNil(); err != nil {
+		return nil, err
+	}
 	return s.output.Bytes(), nil
 }
 
@@ -72,18 +78,6 @@ func (s *Scanner) consumeWithError(char rune) (err error) {
 
 	if err = s.consume(char); err == nil {
 		return nil
-	}
-
-	var sourceErrors source.Errors
-	if errors.As(err, &sourceErrors) {
-		// The location of each expression error is relative to the expression
-		// start location, so we need to do some math to get the absolute
-		// location.
-		for i := range sourceErrors {
-			sourceErrors[i].Location = s.currentExpressionStart.Nested(sourceErrors[i].Location)
-		}
-
-		return sourceErrors
 	}
 
 	return &source.Error{
@@ -162,7 +156,7 @@ func (s *Scanner) onWaitClose(char rune) (err error) {
 
 	var out string
 	if out, err = s.evaluator.Evaluate(s.currentExpression.String()); err != nil {
-		return err
+		return fmt.Errorf("input block evaluation failed with an error: %w", err)
 	}
 
 	s.state = ssDefault
