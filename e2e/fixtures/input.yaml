@@ -1,10 +1,12 @@
 version: "1"
 
-stack:
+test:
   id: ${{ string(inputs.id) }}
+  serial: ${{ inputs.serial }}
   name: ${{ inputs.environment }} in ${{ inputs.region }}
   description: A simple hello world stack
   created_at: ${{ string(context.datetime) }}
+  created_at_s: ${{ context.datetime.getSeconds() }}
   delete_at: ${{ 'context.datetime' }}
   labels:
     - ${{ inputs.environment.contains("prod") ? "bacon" : "cabbage" }}
@@ -13,6 +15,7 @@ stack:
     - $ inputs.region }}
     - ${ inputs.region }}
     - '${ inputs.region }}'
-    - ${{ '17' }}
-    - ${{ "17" }}
-    - ${{ string(17) }}
+    - ${{ '10' }}
+    - ${{ "11" }}
+    - ${{ string(12) }}
+    - ${{ 13 }}
