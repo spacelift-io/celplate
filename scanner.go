@@ -39,6 +39,7 @@ const (
 	ssCloseChar
 )
 
+// NewScanner returns a new generic `Scanner` object.
 func NewScanner(evaluator Evaluator) *Scanner {
 	return &Scanner{
 		currentExpression: bytes.NewBuffer(nil),
@@ -50,8 +51,8 @@ func NewScanner(evaluator Evaluator) *Scanner {
 }
 
 // Transform will transform a given byte slice by using the evaluator.
-// If it encounters any errors related to the provided input it
-// will return a `source.Error`.
+// It will continue even if it encounters an error gathering all
+// errors and returning at the end of input.
 func (s *Scanner) Transform(input []byte) ([]byte, error) {
 	errs := &source.Errors{}
 	for _, char := range string(input) {
@@ -73,17 +74,10 @@ func (s *Scanner) Transform(input []byte) ([]byte, error) {
 	return s.output.Bytes(), nil
 }
 
-func (s *Scanner) consumeWithError(char rune) (err error) {
+func (s *Scanner) consumeWithError(char rune) error {
 	defer func() { s.location.Advance(char) }()
 
-	if err = s.consume(char); err == nil {
-		return nil
-	}
-
-	return &source.Error{
-		Location: *s.location,
-		Message:  err.Error(),
-	}
+	return s.consume(char)
 }
 
 func (s *Scanner) consume(char rune) error {
@@ -151,12 +145,15 @@ func (s *Scanner) onExpression(char rune) (err error) {
 
 func (s *Scanner) onWaitClose(char rune) (err error) {
 	if char != closeChar {
-		return fmt.Errorf("unexpected character %q, expected %q", char, closeChar)
+		return &source.Error{
+			Location: *s.location,
+			Message:  fmt.Sprintf("unexpected character %q, expected %q", char, closeChar),
+		}
 	}
 
 	var out string
 	if out, err = s.evaluator.Evaluate(s.currentExpression.String()); err != nil {
-		return fmt.Errorf("input block evaluation failed with an error: %w", err)
+		return err
 	}
 
 	s.state = ssDefault

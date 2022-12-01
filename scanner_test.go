@@ -72,7 +72,7 @@ func TestScanner(t *testing.T) {
 					g.BeforeEach(func() { evaluateCall.Return("", errors.New("error")) })
 
 					g.It("should fail with the location", func() {
-						Expect(err).To(MatchError("line 1, column 19: input block evaluation failed with an error: error; line 1, column 20: unexpected character '!', expected '}'; line 1, column 21: unexpected end of input"))
+						Expect(err).To(MatchError("error; line 1, column 20: unexpected character '!', expected '}'; line 1, column 21: unexpected end of input"))
 						Expect(output).To(BeNil())
 					})
 				})
