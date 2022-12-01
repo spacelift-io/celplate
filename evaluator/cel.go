@@ -38,14 +38,16 @@ func NewCEL(data map[string]map[string]any) (*CEL, error) {
 
 // Evaluate evaluates the given expression using Google CEL, and returns its
 // result, plus an error, if any.
+//
+// It expects the final value to be one of types: "string", "int", "uint", "double", "bool".
 func (e *CEL) Evaluate(expression string) (string, error) {
 	ast, iss := e.env.Compile(expression)
 
 	if errors := iss.Errors(); len(errors) > 0 {
-		var sourceErrors source.Errors
+		sourceErrors := &source.Errors{}
 
 		for _, err := range errors {
-			sourceErrors = append(sourceErrors, source.Error{
+			sourceErrors.Push(&source.Error{
 				Location: source.Location{
 					Line:   err.Location.Line(),
 					Column: err.Location.Column() + 1, // CEL columns are 0-based
@@ -54,7 +56,7 @@ func (e *CEL) Evaluate(expression string) (string, error) {
 			})
 		}
 
-		return "", sourceErrors
+		return "", sourceErrors.ErrorOrNil()
 	}
 
 	program, err := e.env.Program(ast)
@@ -67,5 +69,10 @@ func (e *CEL) Evaluate(expression string) (string, error) {
 		return "", fmt.Errorf("failed to evaluate expression: %w", err)
 	}
 
-	return fmt.Sprintf("%v", out.Value()), nil
+	switch out.Type().TypeName() {
+	case "string", "int", "uint", "double", "bool":
+		return fmt.Sprint(out.Value()), nil
+	default:
+		return "", fmt.Errorf("failed to cast value %q of type %s to a string", out.Value(), out.Type().TypeName())
+	}
 }
