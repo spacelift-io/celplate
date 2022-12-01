@@ -29,7 +29,7 @@ func TestCEL(t *testing.T) {
 						"foo": "bar",
 					},
 					"context": {
-						"time":     time.Unix(1666960429, 0),
+						"time":     time.Unix(1666960429, 0).UTC(),
 						"pi":       3.14,
 						"unsigned": uint(1),
 						"signed":   2,
@@ -152,7 +152,7 @@ func TestCEL(t *testing.T) {
 				g.BeforeEach(func() { expression = `context.time` })
 
 				g.It("should return an output type error", func() {
-					Expect(err).To(MatchError("failed to cast value \"2022-10-28 15:33:49 +0300 EEST\" of type google.protobuf.Timestamp to a string"))
+					Expect(err).To(MatchError("failed to cast value \"2022-10-28 12:33:49 +0000 UTC\" of type google.protobuf.Timestamp to a string"))
 					Expect(result).To(BeEmpty())
 				})
 			})
