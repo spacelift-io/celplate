@@ -153,7 +153,10 @@ func (s *Scanner) onWaitClose(char rune) (err error) {
 
 	var out string
 	if out, err = s.evaluator.Evaluate(s.currentExpression.String()); err != nil {
-		return err
+		return &source.Error{
+			Location: *s.location,
+			Message:  err.Error(),
+		}
 	}
 
 	s.state = ssDefault
