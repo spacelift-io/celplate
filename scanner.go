@@ -77,7 +77,13 @@ func (s *Scanner) Transform(input []byte) ([]byte, error) {
 func (s *Scanner) consumeWithError(char rune) error {
 	defer func() { s.location.Advance(char) }()
 
-	return s.consume(char)
+	err := s.consume(char)
+	if err != nil {
+		s.state = ssDefault
+		s.currentExpression.Reset()
+	}
+
+	return err
 }
 
 func (s *Scanner) consume(char rune) error {
