@@ -16,4 +16,4 @@ Too see the library in action, checkout the [end to end test](e2e) for it.
 
 ## Releasing
 
-To create a new release just create a new tag and push it to main. For more details checkout the go [docs on publishing modules](https://go.dev/blog/publishing-go-modules).
+To create a new release just create a new tag with a `v` prefix and push it to main. For more details checkout the go [docs on publishing modules](https://go.dev/blog/publishing-go-modules).

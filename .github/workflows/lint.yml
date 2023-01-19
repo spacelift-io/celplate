@@ -1,6 +1,6 @@
 name: Lint
 
-on: { push: { branches-ignore: [main, production] } }
+on: { push: { branches-ignore: [main] } }
 
 jobs:
   lint:
