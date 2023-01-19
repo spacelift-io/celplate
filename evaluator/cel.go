@@ -5,15 +5,10 @@ import (
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/parser"
 
 	"github.com/spacelift-io/celplate/macros"
 	"github.com/spacelift-io/celplate/source"
 )
-
-var customMacros = []parser.Macro{
-	macros.GetJoinMacro(),
-}
 
 // CEL is an implementation of Evaluator that uses CEL expressions.
 type CEL struct {
@@ -23,7 +18,10 @@ type CEL struct {
 
 // NewCEL returns a new instance of CEL evaluator.
 func NewCEL(data map[string]map[string]any) (*CEL, error) {
-	var envOpts []cel.EnvOption
+	envOpts := []cel.EnvOption{
+		macros.GetFormatFunction(),
+		macros.GetJoinFunction(),
+	}
 
 	vars := make(map[string]any)
 
@@ -33,10 +31,6 @@ func NewCEL(data map[string]map[string]any) (*CEL, error) {
 			cel.Variable(key, cel.MapType(cel.StringType, cel.AnyType)),
 		)
 		vars[key] = value
-	}
-
-	for _, macro := range customMacros {
-		envOpts = append(envOpts, cel.Macros(macro))
 	}
 
 	env, err := cel.NewEnv(envOpts...)

@@ -195,9 +195,34 @@ func TestCEL(t *testing.T) {
 
 						g.It("should return the result of the expression", func() {
 							Expect(err).ToNot(HaveOccurred())
-							Expect(result).To(Equal("1972-01-01T10:00:20.021-05:00, 5s"))
+							Expect(result).To(Equal("1972-01-01 10:00:20.021 -0500 -0500, 5s"))
 						})
 					})
+				})
+
+				g.Describe("format", func() {
+					g.Describe("case one", func() {
+						g.Before(func() {
+							expression = `timestamp('1972-01-01T10:00:20.021-05:00').format('2006-01-02')`
+						})
+
+						g.It("should return the result of the expression", func() {
+							Expect(err).ToNot(HaveOccurred())
+							Expect(result).To(Equal("1972-01-01"))
+						})
+					})
+
+					g.Describe("case two", func() {
+						g.Before(func() {
+							expression = `context.time.format('2006-01-02')`
+						})
+
+						g.It("should return the result of the expression", func() {
+							Expect(err).ToNot(HaveOccurred())
+							Expect(result).To(Equal("2022-10-28"))
+						})
+					})
+
 				})
 			})
 
