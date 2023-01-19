@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/google/cel-go/cel"
+	"github.com/google/cel-go/common/types"
 	"github.com/google/cel-go/parser"
 
 	"github.com/spacelift-io/celplate/macros"
@@ -79,10 +80,16 @@ func (e *CEL) Evaluate(expression string) (string, error) {
 		return "", fmt.Errorf("failed to evaluate expression: %w", err)
 	}
 
-	switch out.Type().TypeName() {
-	case "string", "int", "uint", "double", "bool":
-		return fmt.Sprint(out.Value()), nil
-	default:
+	// If it's a string, return it as is.
+	if out.Type() == types.StringType {
+		return out.Value().(string), nil
+	}
+
+	// Otherwise, let's attempt a conversion.
+	converted := out.ConvertToType(types.StringType)
+	if converted.Type() == types.ErrType {
 		return "", fmt.Errorf("failed to cast value %q of type %s to a string", out.Value(), out.Type().TypeName())
 	}
+
+	return converted.Value().(string), nil
 }

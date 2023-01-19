@@ -148,15 +148,6 @@ func TestCEL(t *testing.T) {
 				})
 			})
 
-			g.Describe("with an invalid expression type", func() {
-				g.BeforeEach(func() { expression = `context.time` })
-
-				g.It("should return an output type error", func() {
-					Expect(err).To(MatchError("failed to cast value \"2022-10-28 12:33:49 +0000 UTC\" of type google.protobuf.Timestamp to a string"))
-					Expect(result).To(BeEmpty())
-				})
-			})
-
 			g.Describe("with an invalid expression", func() {
 				g.BeforeEach(func() { expression = `<<<LLLdsf--dsdf` })
 
@@ -206,6 +197,30 @@ func TestCEL(t *testing.T) {
 							Expect(err).ToNot(HaveOccurred())
 							Expect(result).To(Equal("1972-01-01T10:00:20.021-05:00, 5s"))
 						})
+					})
+				})
+			})
+
+			g.Describe("convertible types", func() {
+				g.Describe("timestamp", func() {
+					g.BeforeEach(func() {
+						expression = `timestamp('1972-01-01T10:00:20.021-05:00')`
+					})
+
+					g.It("becomes a string", func() {
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).To(Equal("1972-01-01T10:00:20.021-05:00"))
+					})
+				})
+
+				g.Describe("duration", func() {
+					g.BeforeEach(func() {
+						expression = `duration('1h5s')`
+					})
+
+					g.It("becomes a string", func() {
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).To(Equal("3605s"))
 					})
 				})
 			})
