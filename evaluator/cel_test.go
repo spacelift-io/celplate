@@ -172,6 +172,43 @@ func TestCEL(t *testing.T) {
 					Expect(err).To(MatchError("line 1, column 1: undeclared reference to 'unknown' (in container '')"))
 				})
 			})
+
+			g.Describe("custom macros", func() {
+				g.Describe("join", func() {
+					g.Describe("works with string lists", func() {
+						g.BeforeEach(func() {
+							expression = `['1', '2'].join(', ')`
+						})
+
+						g.It("should return the result of the expression", func() {
+							Expect(err).ToNot(HaveOccurred())
+							Expect(result).To(Equal("1, 2"))
+						})
+					})
+
+					g.Describe("works with int lists", func() {
+						g.BeforeEach(func() {
+							expression = `[1,2,3].join(', ')`
+						})
+
+						g.It("should return the result of the expression", func() {
+							Expect(err).ToNot(HaveOccurred())
+							Expect(result).To(Equal("1, 2, 3"))
+						})
+					})
+
+					g.Describe("works with int timestamps and durations", func() {
+						g.BeforeEach(func() {
+							expression = `[timestamp('1972-01-01T10:00:20.021-05:00'), duration('5s')].join(', ')`
+						})
+
+						g.It("should return the result of the expression", func() {
+							Expect(err).ToNot(HaveOccurred())
+							Expect(result).To(Equal("1972-01-01T10:00:20.021-05:00, 5s"))
+						})
+					})
+				})
+			})
 		})
 	})
 }
