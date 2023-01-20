@@ -35,10 +35,13 @@ func TestCEL(t *testing.T) {
 						"signed":   2,
 						"boolean":  true,
 					},
+					"complex": {
+						"intmap":   map[any]any{1: 2},
+						"mixedmap": map[any]any{1: "2"},
+						"slice":    []int{1, 2},
+					},
 					"invalid": {
-						"map":   map[int]int{1: 2},
-						"slice": []int{1, 2},
-						"func":  func() {},
+						"func": func() {},
 					},
 				}
 			})
@@ -118,24 +121,38 @@ func TestCEL(t *testing.T) {
 				})
 				g.Describe("slice", func() {
 					g.BeforeEach(func() {
-						expression = `invalid.slice`
+						expression = `complex.slice`
 					})
 
-					g.It("should fail as it cannot be a string", func() {
-						Expect(err).To(HaveOccurred())
-						Expect(result).To(Equal(""))
+					g.It("should be joined properly", func() {
+						Expect(err).To(Not(HaveOccurred()))
+						Expect(result).To(Equal("[1 2]"))
 					})
 				})
 				g.Describe("map", func() {
-					g.BeforeEach(func() {
-						expression = `invalid.map`
+					g.Describe("intmap", func() {
+						g.BeforeEach(func() {
+							expression = `complex.intmap`
+						})
+
+						g.It("should format properly", func() {
+							Expect(err).To(Not(HaveOccurred()))
+							Expect(result).To(Equal("{1: 2}"))
+						})
 					})
 
-					g.It("should fail as it cannot be a string", func() {
-						Expect(err).To(HaveOccurred())
-						Expect(result).To(Equal(""))
+					g.Describe("mixedmap", func() {
+						g.BeforeEach(func() {
+							expression = `complex.mixedmap`
+						})
+
+						g.It("should format properly", func() {
+							Expect(err).To(Not(HaveOccurred()))
+							Expect(result).To(Equal("{1: 2}"))
+						})
 					})
 				})
+
 				g.Describe("function", func() {
 					g.BeforeEach(func() {
 						expression = `invalid.func`
@@ -176,28 +193,6 @@ func TestCEL(t *testing.T) {
 							Expect(result).To(Equal("1, 2"))
 						})
 					})
-
-					g.Describe("works with int lists", func() {
-						g.BeforeEach(func() {
-							expression = `[1,2,3].join(', ')`
-						})
-
-						g.It("should return the result of the expression", func() {
-							Expect(err).ToNot(HaveOccurred())
-							Expect(result).To(Equal("1, 2, 3"))
-						})
-					})
-
-					g.Describe("works with int timestamps and durations", func() {
-						g.BeforeEach(func() {
-							expression = `[timestamp('1972-01-01T10:00:20.021-05:00'), duration('5s')].join(', ')`
-						})
-
-						g.It("should return the result of the expression", func() {
-							Expect(err).ToNot(HaveOccurred())
-							Expect(result).To(Equal("1972-01-01T10:00:20.021-05:00, 5s"))
-						})
-					})
 				})
 			})
 
@@ -221,6 +216,30 @@ func TestCEL(t *testing.T) {
 					g.It("becomes a string", func() {
 						Expect(err).ToNot(HaveOccurred())
 						Expect(result).To(Equal("3605s"))
+					})
+				})
+			})
+
+			g.Describe("string extensions", func() {
+				g.Describe("split", func() {
+					g.BeforeEach(func() {
+						expression = `"hello world".split(" ").join(", ")`
+					})
+
+					g.It("becomes a list", func() {
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).To(Equal("hello, world"))
+					})
+				})
+
+				g.Describe("replace", func() {
+					g.BeforeEach(func() {
+						expression = `'hello hello'.replace('he', 'we')`
+					})
+
+					g.It("replaces the string", func() {
+						Expect(err).ToNot(HaveOccurred())
+						Expect(result).To(Equal("wello wello"))
 					})
 				})
 			})

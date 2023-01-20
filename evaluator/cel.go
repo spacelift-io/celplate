@@ -2,18 +2,19 @@ package evaluator
 
 import (
 	"fmt"
+	"reflect"
+	"strings"
 
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types"
-	"github.com/google/cel-go/parser"
+	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/ext"
 
-	"github.com/spacelift-io/celplate/macros"
 	"github.com/spacelift-io/celplate/source"
 )
 
-var customMacros = []parser.Macro{
-	macros.GetJoinMacro(),
-}
+var anyListType = reflect.TypeOf([]any{})
+var anyMapType = reflect.TypeOf(map[any]any{})
 
 // CEL is an implementation of Evaluator that uses CEL expressions.
 type CEL struct {
@@ -35,9 +36,9 @@ func NewCEL(data map[string]map[string]any) (*CEL, error) {
 		vars[key] = value
 	}
 
-	for _, macro := range customMacros {
-		envOpts = append(envOpts, cel.Macros(macro))
-	}
+	// There is a bunch of methods which isn't included in the default environment
+	// like `charAt`, `join`, `split`, etc. Let's add them too.
+	envOpts = append(envOpts, ext.Strings())
 
 	env, err := cel.NewEnv(envOpts...)
 	if err != nil {
@@ -80,16 +81,53 @@ func (e *CEL) Evaluate(expression string) (string, error) {
 		return "", fmt.Errorf("failed to evaluate expression: %w", err)
 	}
 
+	return e.attemptConversionToString(out)
+}
+
+// attemptConversionToString tries to convert the outcome of the expression to a string.
+func (e *CEL) attemptConversionToString(out ref.Val) (string, error) {
+	switch out.Type() {
 	// If it's a string, return it as is.
-	if out.Type() == types.StringType {
+	case types.StringType:
 		return out.Value().(string), nil
-	}
+
+	// If it's a list, let's convert it to a string like this:
+	// [1, 2, 3] -> "[1 2 3]"
+	case types.ListType:
+		asList, err := out.ConvertToNative(anyListType)
+		if err != nil {
+			return "", fmt.Errorf("failed to cast value %q of type %s to a list", out.Value(), out.Type().TypeName())
+		}
+
+		var items []string
+		for _, item := range asList.([]any) {
+			items = append(items, fmt.Sprint(item))
+		}
+
+		return fmt.Sprintf("[%s]", strings.Join(items, " ")), nil
+
+	// If it's a map, let's convert it to a string like this:
+	// {"a": 1, "b": 2} -> "{a: 1, b: 2}"
+	case types.MapType:
+		asMap, err := out.ConvertToNative(anyMapType)
+		if err != nil {
+			return "", fmt.Errorf("failed to cast value %q of type %s to a map", out.Value(), out.Type().TypeName())
+		}
+
+		var items []string
+		for key, value := range asMap.(map[any]any) {
+			items = append(items, fmt.Sprintf("%v: %v", key, value))
+		}
+
+		return fmt.Sprintf("{%s}", strings.Join(items, ", ")), nil
 
 	// Otherwise, let's attempt a conversion.
-	converted := out.ConvertToType(types.StringType)
-	if converted.Type() == types.ErrType {
-		return "", fmt.Errorf("failed to cast value %q of type %s to a string", out.Value(), out.Type().TypeName())
+	// For example: timestamp("2020-01-01T00:00:00Z") -> "2020-01-01T00:00:00Z" etc.
+	default:
+		converted := out.ConvertToType(types.StringType)
+		if converted.Type() == types.ErrType {
+			return "", fmt.Errorf("failed to cast value %q of type %s to a string", out.Value(), out.Type().TypeName())
+		}
+		return converted.Value().(string), nil
 	}
-
-	return converted.Value().(string), nil
 }
