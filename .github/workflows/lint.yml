@@ -2,6 +2,10 @@ name: Lint
 
 on: { push: { branches-ignore: [main] } }
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -15,3 +19,8 @@ jobs:
         uses: golangci/golangci-lint-action@v3
         with:
           version: v1.50
+
+      - name: See if go.mod and go.sum are tidy
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
