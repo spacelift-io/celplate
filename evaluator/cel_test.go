@@ -1,6 +1,7 @@
 package evaluator_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -244,5 +245,20 @@ func TestCEL(t *testing.T) {
 				})
 			})
 		})
+	})
+}
+
+func FuzzScanner(f *testing.F) {
+	sut, _ := evaluator.NewCEL(map[string]map[string]any{})
+
+	f.Add("Hello, world!")
+
+	f.Fuzz(func(t *testing.T, input string) {
+		inp := fmt.Sprintf("Hello, ${{ %s }}!", input)
+
+		_, err := sut.Evaluate(inp)
+		if err == nil {
+			t.Fatalf("expected error, got nil for %s", inp)
+		}
 	})
 }
