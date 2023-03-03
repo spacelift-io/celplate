@@ -1,6 +1,7 @@
 version: "1"
 
 test:
+  # should not be evaluated ${{ inputs.notExisting }}
   id: 1
   serial: 111111111111
   name: production in us-east-1
