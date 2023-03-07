@@ -1,6 +1,7 @@
 version: "1"
 
 test:
+  # should not be evaluated ${{ inputs.notExisting }}
   id: ${{ string(inputs.id) }}
   serial: ${{ inputs.serial }}
   name: ${{ inputs.environment }} in ${{ inputs.region }}

@@ -55,9 +55,28 @@ func NewScanner(evaluator Evaluator) *Scanner {
 // errors and returning at the end of input.
 func (s *Scanner) Transform(input []byte) ([]byte, error) {
 	errs := &source.Errors{}
-	for _, char := range string(input) {
-		if err := s.consumeWithError(char); err != nil {
-			errs.Push(err)
+	lines := bytes.Split(input, []byte("\n"))
+
+	for ix, line := range lines {
+		// If the line starts with a comment, we don't want to evaluate it.
+		// We currently only support comments starting with a hash (#).
+		trimmedLine := bytes.TrimSpace(line)
+		if bytes.HasPrefix(trimmedLine, []byte("#")) {
+			s.output.Write(line)
+			if ix != len(lines)-1 {
+				s.output.Write([]byte("\n"))
+			}
+			continue
+		}
+
+		for _, char := range string(line) {
+			if err := s.consumeWithError(char); err != nil {
+				errs.Push(err)
+			}
+		}
+
+		if ix != len(lines)-1 {
+			s.output.Write([]byte("\n"))
 		}
 	}
 
