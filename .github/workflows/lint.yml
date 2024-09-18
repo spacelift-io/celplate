@@ -9,16 +9,18 @@ concurrency:
 jobs:
   lint:
     runs-on: ubuntu-latest
-    container: golang:1.19
 
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
 
       - name: Run golangci-lint
-        uses: golangci/golangci-lint-action@v3
-        with:
-          version: v1.50
+        uses: golangci/golangci-lint-action@v6
 
       - name: See if go.mod and go.sum are tidy
         run: |
