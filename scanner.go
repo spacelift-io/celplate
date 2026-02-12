@@ -65,6 +65,9 @@ func (s *Scanner) Transform(input []byte) ([]byte, error) {
 			s.output.Write(line)
 			if ix != len(lines)-1 {
 				s.output.Write([]byte("\n"))
+				// Increment the line if it's a comment since we're skipping line evaluation
+				// This is to keep the line location correct
+				s.location.Advance('\n')
 			}
 			continue
 		}
@@ -77,6 +80,7 @@ func (s *Scanner) Transform(input []byte) ([]byte, error) {
 
 		if ix != len(lines)-1 {
 			s.output.Write([]byte("\n"))
+			s.location.Advance('\n')
 		}
 	}
 
