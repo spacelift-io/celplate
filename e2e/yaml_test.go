@@ -5,14 +5,15 @@ import (
 	"testing"
 	"time"
 
-	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/spacelift-io/celplate"
 	"github.com/spacelift-io/celplate/evaluator"
 )
 
 func TestEndToEnd(t *testing.T) {
-	wt := NewWithT(t)
-	evaluator, err := evaluator.NewCEL(map[string]map[string]any{
+	cel, err := evaluator.NewCEL(map[string]map[string]any{
 		"inputs": {
 			"environment": "production",
 			"region":      "us-east-1",
@@ -23,16 +24,15 @@ func TestEndToEnd(t *testing.T) {
 			"datetime": time.Date(2022, time.April, 10, 1, 1, 1, 1, time.UTC),
 		},
 	})
-	wt.Expect(err).ToNot(HaveOccurred())
+	require.NoError(t, err)
 
 	input, err := os.ReadFile("fixtures/input.yaml")
-	wt.Expect(err).ToNot(HaveOccurred())
+	require.NoError(t, err)
 
-	output, err := os.ReadFile("fixtures/output.yaml")
-	wt.Expect(err).ToNot(HaveOccurred())
+	expected, err := os.ReadFile("fixtures/output.yaml")
+	require.NoError(t, err)
 
-	out, err := celplate.NewScanner(evaluator).Transform(input)
-
-	wt.Expect(err).ToNot(HaveOccurred())
-	wt.Expect(string(out)).To(Equal(string(output)))
+	out, err := celplate.NewScanner(cel).Transform(input)
+	require.NoError(t, err)
+	assert.Equal(t, string(expected), string(out))
 }

@@ -4,9 +4,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/franela/goblin"
-	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
+	"github.com/stretchr/testify/require"
 
 	"github.com/spacelift-io/celplate"
 )
@@ -20,83 +20,53 @@ func (m *mockEvaluator) Evaluate(expression string) (string, error) {
 	return args.String(0), args.Error(1)
 }
 
-func TestScanner(t *testing.T) {
-	g := goblin.Goblin(t)
-	RegisterFailHandler(func(m string, _ ...int) { g.Fail(m) })
+func TestScanner_Transform_PlainText(t *testing.T) {
+	sut := celplate.NewScanner(new(mockEvaluator))
+	input := []byte("Hello, world!")
 
-	g.Describe("Scanner", func() {
-		var sut *celplate.Scanner
-		var mockCaller *mockEvaluator
+	output, err := sut.Transform(input)
 
-		g.BeforeEach(func() {
-			mockCaller = new(mockEvaluator)
-			sut = celplate.NewScanner(mockCaller)
-		})
+	require.NoError(t, err)
+	assert.Equal(t, input, output)
+}
 
-		g.Describe("Transform", func() {
-			var input []byte
-			var err error
-			var output []byte
+func TestScanner_Transform_InvalidExpression(t *testing.T) {
+	sut := celplate.NewScanner(new(mockEvaluator))
 
-			g.JustBeforeEach(func() { output, err = sut.Transform(input) })
+	output, err := sut.Transform([]byte("Hello, ${{ world }!"))
 
-			g.Describe("when the input is valid", func() {
-				g.BeforeEach(func() { input = []byte("Hello, world!") })
+	assert.EqualError(t, err, "line 1, column 19: unexpected character '!', expected '}'")
+	assert.Nil(t, output)
+}
 
-				g.It("should succeed", func() {
-					Expect(err).NotTo(HaveOccurred())
+func TestScanner_Transform_BareDollarAtEndOfLine(t *testing.T) {
+	sut := celplate.NewScanner(new(mockEvaluator))
+	input := []byte("pattern: ^[a-z]+$\nrequired: true")
 
-					Expect(err).NotTo(HaveOccurred())
-					Expect(output).To(Equal(input))
-				})
-			})
+	output, err := sut.Transform(input)
 
-			g.Describe("when the input is invalid", func() {
-				g.BeforeEach(func() { input = []byte("Hello, ${{ world }!") })
+	require.NoError(t, err)
+	assert.Equal(t, input, output)
+}
 
-				g.It("should fail with the location", func() {
-					Expect(err).To(MatchError("line 1, column 19: unexpected character '!', expected '}'"))
-					Expect(output).To(BeNil())
-				})
-			})
+func TestScanner_Transform_ExpressionEvaluationError(t *testing.T) {
+	ev := new(mockEvaluator)
+	ev.On("Evaluate", " world ").Return("", errors.New("error"))
+	sut := celplate.NewScanner(ev)
 
-			g.Describe("when the input contains a bare $ at end of a line", func() {
-				g.BeforeEach(func() {
-					input = []byte("pattern: ^[a-z]+$\nrequired: true")
-				})
+	output, err := sut.Transform([]byte("Hello, ${{ world }}!"))
 
-				g.It("should pass through literally without consuming the next line", func() {
-					Expect(err).NotTo(HaveOccurred())
-					Expect(output).To(Equal(input))
-				})
-			})
+	assert.EqualError(t, err, "line 1, column 19: error")
+	assert.Nil(t, output)
+}
 
-			g.Describe("when the input contains an expression", func() {
-				var evaluateCall *mock.Call
+func TestScanner_Transform_ExpressionEvaluationSuccess(t *testing.T) {
+	ev := new(mockEvaluator)
+	ev.On("Evaluate", " world ").Return("world", nil)
+	sut := celplate.NewScanner(ev)
 
-				g.BeforeEach(func() {
-					input = []byte("Hello, ${{ world }}!")
-					evaluateCall = mockCaller.On("Evaluate", " world ")
-				})
+	output, err := sut.Transform([]byte("Hello, ${{ world }}!"))
 
-				g.Describe("when the evaluation fails", func() {
-					g.BeforeEach(func() { evaluateCall.Return("", errors.New("error")) })
-
-					g.It("should fail with the location", func() {
-						Expect(err).To(MatchError("line 1, column 19: error"))
-						Expect(output).To(BeNil())
-					})
-				})
-
-				g.Describe("when the evaluation succeeds", func() {
-					g.BeforeEach(func() { evaluateCall.Return("world", nil) })
-
-					g.It("should succeed", func() {
-						Expect(err).NotTo(HaveOccurred())
-						Expect(output).To(Equal([]byte("Hello, world!")))
-					})
-				})
-			})
-		})
-	})
+	require.NoError(t, err)
+	assert.Equal(t, []byte("Hello, world!"), output)
 }

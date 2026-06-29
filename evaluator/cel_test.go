@@ -4,245 +4,152 @@ import (
 	"testing"
 	"time"
 
-	"github.com/franela/goblin"
-	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/spacelift-io/celplate/evaluator"
 )
 
-func TestCEL(t *testing.T) {
-	g := goblin.Goblin(t)
-	RegisterFailHandler(func(m string, _ ...int) { g.Fail(m) })
-
-	g.Describe("CEL", func() {
-		var environment map[string]map[string]any
-		var err error
-		var sut *evaluator.CEL
-
-		g.JustBeforeEach(func() {
-			sut, err = evaluator.NewCEL(environment)
-		})
-
-		g.Describe("NewCEL", func() {
-			g.Describe("with a valid environment", func() {
-				environment = map[string]map[string]any{
-					"input": {
-						"foo": "bar",
-					},
-					"context": {
-						"time":     time.Unix(1666960429, 0).UTC(),
-						"pi":       3.14,
-						"unsigned": uint(1),
-						"signed":   2,
-						"boolean":  true,
-					},
-					"complex": {
-						"intmap":   map[any]any{1: 2},
-						"mixedmap": map[any]any{1: "2"},
-						"slice":    []int{1, 2},
-					},
-					"invalid": {
-						"func": func() {},
-					},
-				}
-			})
-
-			g.It("should return a new instance of CEL evaluator", func() {
-				Expect(err).ToNot(HaveOccurred())
-				Expect(sut).ToNot(BeNil())
-			})
-		})
-
-		g.Describe("Evaluate", func() {
-			var expression, result string
-
-			g.JustBeforeEach(func() { result, err = sut.Evaluate(expression) })
-
-			g.Describe("with all expression values converted to string", func() {
-				g.BeforeEach(func() {
-					expression = `input.foo + "|" + string(context.time.getSeconds()) + "|" + string(context.pi)`
-				})
-
-				g.It("should return the result of the expression", func() {
-					Expect(err).ToNot(HaveOccurred())
-					Expect(result).To(Equal("bar|49|3.14"))
-				})
-			})
-
-			g.Describe("with non string input values being converted to appropriate strings", func() {
-				g.Describe("double", func() {
-					g.BeforeEach(func() {
-						expression = `context.pi`
-					})
-
-					g.It("should return the result of the expression", func() {
-						Expect(err).ToNot(HaveOccurred())
-						Expect(result).To(Equal("3.14"))
-					})
-				})
-				g.Describe("int", func() {
-					g.BeforeEach(func() {
-						expression = `context.signed`
-					})
-
-					g.It("should return the result of the expression", func() {
-						Expect(err).ToNot(HaveOccurred())
-						Expect(result).To(Equal("2"))
-					})
-				})
-				g.Describe("uint", func() {
-					g.BeforeEach(func() {
-						expression = `context.unsigned`
-					})
-
-					g.It("should return the result of the expression", func() {
-						Expect(err).ToNot(HaveOccurred())
-						Expect(result).To(Equal("1"))
-					})
-				})
-				g.Describe("boolean", func() {
-					g.BeforeEach(func() {
-						expression = `context.boolean`
-					})
-
-					g.It("should return the result of the expression", func() {
-						Expect(err).ToNot(HaveOccurred())
-						Expect(result).To(Equal("true"))
-					})
-				})
-				g.Describe("boolean", func() {
-					g.BeforeEach(func() {
-						expression = `context.boolean`
-					})
-
-					g.It("should return the result of the expression", func() {
-						Expect(err).ToNot(HaveOccurred())
-						Expect(result).To(Equal("true"))
-					})
-				})
-				g.Describe("slice", func() {
-					g.BeforeEach(func() {
-						expression = `complex.slice`
-					})
-
-					g.It("should be joined properly", func() {
-						Expect(err).To(Not(HaveOccurred()))
-						Expect(result).To(Equal("[1 2]"))
-					})
-				})
-				g.Describe("map", func() {
-					g.Describe("intmap", func() {
-						g.BeforeEach(func() {
-							expression = `complex.intmap`
-						})
-
-						g.It("should format properly", func() {
-							Expect(err).To(Not(HaveOccurred()))
-							Expect(result).To(Equal("{1: 2}"))
-						})
-					})
-
-					g.Describe("mixedmap", func() {
-						g.BeforeEach(func() {
-							expression = `complex.mixedmap`
-						})
-
-						g.It("should format properly", func() {
-							Expect(err).To(Not(HaveOccurred()))
-							Expect(result).To(Equal("{1: 2}"))
-						})
-					})
-				})
-
-				g.Describe("function", func() {
-					g.BeforeEach(func() {
-						expression = `invalid.func`
-					})
-
-					g.It("should fail as it cannot be a string", func() {
-						Expect(err).To(HaveOccurred())
-						Expect(result).To(Equal(""))
-					})
-				})
-			})
-
-			g.Describe("with an invalid expression", func() {
-				g.BeforeEach(func() { expression = `<<<LLLdsf--dsdf` })
-
-				g.It("should return a compilation error", func() {
-					Expect(err.Error()).To(ContainSubstring("line 1, column 1: Syntax error"))
-				})
-			})
-
-			g.Describe("with an invalid key", func() {
-				g.BeforeEach(func() { expression = `unknown.var + input.bar` })
-
-				g.It("should return a compilation error", func() {
-					Expect(err).To(MatchError("line 1, column 1: undeclared reference to 'unknown' (in container '')"))
-				})
-			})
-
-			g.Describe("custom macros", func() {
-				g.Describe("join", func() {
-					g.Describe("works with string lists", func() {
-						g.BeforeEach(func() {
-							expression = `['1', '2'].join(', ')`
-						})
-
-						g.It("should return the result of the expression", func() {
-							Expect(err).ToNot(HaveOccurred())
-							Expect(result).To(Equal("1, 2"))
-						})
-					})
-				})
-			})
-
-			g.Describe("convertible types", func() {
-				g.Describe("timestamp", func() {
-					g.BeforeEach(func() {
-						expression = `timestamp('1972-01-01T10:00:20.021-05:00')`
-					})
-
-					g.It("becomes a string", func() {
-						Expect(err).ToNot(HaveOccurred())
-						Expect(result).To(Equal("1972-01-01T10:00:20.021-05:00"))
-					})
-				})
-
-				g.Describe("duration", func() {
-					g.BeforeEach(func() {
-						expression = `duration('1h5s')`
-					})
-
-					g.It("becomes a string", func() {
-						Expect(err).ToNot(HaveOccurred())
-						Expect(result).To(Equal("3605s"))
-					})
-				})
-			})
-
-			g.Describe("string extensions", func() {
-				g.Describe("split", func() {
-					g.BeforeEach(func() {
-						expression = `"hello world".split(" ").join(", ")`
-					})
-
-					g.It("becomes a list", func() {
-						Expect(err).ToNot(HaveOccurred())
-						Expect(result).To(Equal("hello, world"))
-					})
-				})
-
-				g.Describe("replace", func() {
-					g.BeforeEach(func() {
-						expression = `'hello hello'.replace('he', 'we')`
-					})
-
-					g.It("replaces the string", func() {
-						Expect(err).ToNot(HaveOccurred())
-						Expect(result).To(Equal("wello wello"))
-					})
-				})
-			})
-		})
+func newTestCEL(t *testing.T) *evaluator.CEL {
+	t.Helper()
+	cel, err := evaluator.NewCEL(map[string]map[string]any{
+		"input": {
+			"foo": "bar",
+		},
+		"context": {
+			"time":     time.Unix(1666960429, 0).UTC(),
+			"pi":       3.14,
+			"unsigned": uint(1),
+			"signed":   2,
+			"boolean":  true,
+		},
+		"complex": {
+			"intmap":   map[any]any{1: 2},
+			"mixedmap": map[any]any{1: "2"},
+			"slice":    []int{1, 2},
+		},
+		"invalid": {
+			"func": func() {},
+		},
 	})
+	require.NoError(t, err)
+	return cel
+}
+
+func TestCEL_NewCEL(t *testing.T) {
+	cel, err := evaluator.NewCEL(map[string]map[string]any{
+		"input": {"foo": "bar"},
+	})
+	require.NoError(t, err)
+	assert.NotNil(t, cel)
+}
+
+func TestCEL_Evaluate(t *testing.T) {
+	tests := []struct {
+		name        string
+		expression  string
+		want        string
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name:       "all values converted to string",
+			expression: `input.foo + "|" + string(context.time.getSeconds()) + "|" + string(context.pi)`,
+			want:       "bar|49|3.14",
+		},
+		{
+			name:       "double",
+			expression: `context.pi`,
+			want:       "3.14",
+		},
+		{
+			name:       "int",
+			expression: `context.signed`,
+			want:       "2",
+		},
+		{
+			name:       "uint",
+			expression: `context.unsigned`,
+			want:       "1",
+		},
+		{
+			name:       "boolean",
+			expression: `context.boolean`,
+			want:       "true",
+		},
+		{
+			name:       "slice joined properly",
+			expression: `complex.slice`,
+			want:       "[1 2]",
+		},
+		{
+			name:       "intmap formatted properly",
+			expression: `complex.intmap`,
+			want:       "{1: 2}",
+		},
+		{
+			name:       "mixedmap formatted properly",
+			expression: `complex.mixedmap`,
+			want:       "{1: 2}",
+		},
+		{
+			name:    "function cannot be a string",
+			expression: `invalid.func`,
+			wantErr: true,
+		},
+		{
+			name:        "invalid expression returns compilation error",
+			expression:  `<<<LLLdsf--dsdf`,
+			wantErr:     true,
+			errContains: "line 1, column 1: Syntax error",
+		},
+		{
+			name:        "invalid key returns compilation error",
+			expression:  `unknown.var + input.bar`,
+			wantErr:     true,
+			errContains: "line 1, column 1: undeclared reference to 'unknown' (in container '')",
+		},
+		{
+			name:       "join macro works with string lists",
+			expression: `['1', '2'].join(', ')`,
+			want:       "1, 2",
+		},
+		{
+			name:       "timestamp becomes a string",
+			expression: `timestamp('1972-01-01T10:00:20.021-05:00')`,
+			want:       "1972-01-01T10:00:20.021-05:00",
+		},
+		{
+			name:       "duration becomes a string",
+			expression: `duration('1h5s')`,
+			want:       "3605s",
+		},
+		{
+			name:       "split becomes a list",
+			expression: `"hello world".split(" ").join(", ")`,
+			want:       "hello, world",
+		},
+		{
+			name:       "replace replaces the string",
+			expression: `'hello hello'.replace('he', 'we')`,
+			want:       "wello wello",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cel := newTestCEL(t)
+			result, err := cel.Evaluate(tt.expression)
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.Empty(t, result)
+				if tt.errContains != "" {
+					assert.ErrorContains(t, err, tt.errContains)
+				}
+				return
+			}
+			require.NoError(t, err)
+			assert.Equal(t, tt.want, result)
+		})
+	}
 }
