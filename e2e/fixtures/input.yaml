@@ -5,7 +5,9 @@ test:
   id: ${{ string(inputs.id) }}
   serial: ${{ inputs.serial }}
   name: ${{ inputs.environment }} in ${{ inputs.region }}
-  description: A simple hello world stack
+  description: |
+    A simple hello world stack
+    A line with dollar sign at the end $
   created_at: ${{ string(context.datetime) }}
   created_at_s: ${{ context.datetime.getSeconds() }}
   delete_at: ${{ 'context.datetime' }}

@@ -60,6 +60,17 @@ func TestScanner(t *testing.T) {
 				})
 			})
 
+			g.Describe("when the input contains a bare $ at end of a line", func() {
+				g.BeforeEach(func() {
+					input = []byte("pattern: ^[a-z]+$\nrequired: true")
+				})
+
+				g.It("should pass through literally without consuming the next line", func() {
+					Expect(err).NotTo(HaveOccurred())
+					Expect(output).To(Equal(input))
+				})
+			})
+
 			g.Describe("when the input contains an expression", func() {
 				var evaluateCall *mock.Call
 

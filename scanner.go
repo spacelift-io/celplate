@@ -79,8 +79,9 @@ func (s *Scanner) Transform(input []byte) ([]byte, error) {
 		}
 
 		if ix != len(lines)-1 {
-			s.output.Write([]byte("\n"))
-			s.location.Advance('\n')
+			if err := s.consumeWithError('\n'); err != nil {
+				errs.Push(err)
+			}
 		}
 	}
 
